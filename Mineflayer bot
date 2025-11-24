@@ -1,0 +1,134 @@
+const mineflayer = require("mineflayer");
+const express = require("express"); // ← This was missing!
+const { Client, GatewayIntentBits } = require("discord.js");
+
+const app = express();
+app.get("/", (req, res) => res.send("Mineflayer bot is running!"));
+app.listen(3000, () => console.log("Web server started on port 3000"));
+
+const config = {
+  mc: {
+    host: "play.pika-network.net",
+    port: 25565,
+    username: "ItIsLux",
+    version: "1.18.1",
+    loginPassword: "Vex3J01itbng", // change this to your real password
+  },
+  discord: {
+    token:
+      "MTQzMDkyNDA1MDYxMTMxMDY3Mg.GzOMKO.iX0q1728EnJEUrd2kuq4JBeICv7yQ6fP-dPgbA",
+    channelId: "1430925481540063405",
+  },
+};
+
+const discord = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
+
+let bot = null;
+let afkJumpInterval = null;
+
+// =============== AFK JUMP LOOP =================
+function startAfkJumpLoop() {
+  // Clear old interval if exists (for safety on reconnect)
+  if (afkJumpInterval) clearInterval(afkJumpInterval);
+
+  afkJumpInterval = setInterval(() => {
+    if (!bot || !bot.entity) return;
+
+    try {
+      // Press jump
+      bot.setControlState("jump", true);
+
+      // Release after 300 ms so it’s a quick hop
+      setTimeout(() => {
+        if (bot) bot.setControlState("jump", false);
+      }, 300);
+      console.log("⬆ AFK jump executed");
+    } catch (e) {
+      console.log("Error during AFK jump:", e);
+    }
+  }, 60 * 1000); // every 60 seconds
+}
+
+// ======================
+// START MINEFLAYER BOT
+// ======================
+function startMinecraftBot() {
+  bot = mineflayer.createBot({
+    host: config.mc.host,
+    port: config.mc.port,
+    username: config.mc.username,
+    version: config.mc.version,
+  });
+
+  bot.once("spawn", () => {
+    console.log("🟢 Bot successfully joined the Minecraft server!");
+    bot.chat("✔ Bot is now connected to the server!");
+
+    // Auto /login
+    setTimeout(() => {
+      bot.chat(`/login ${config.mc.loginPassword}`);
+      console.log("🔐 Sent /login command");
+    }, 2000);
+
+    // Auto /server survival
+    setTimeout(() => {
+      bot.chat(`/server survival`);
+      console.log("🌍 Sent /server survival command");
+    }, 4000);
+
+    // Start AFK jump loop
+    startAfkJumpLoop();
+  });
+
+  bot.on("chat", (username, message) => {
+    if (username === bot.username) return;
+    const channel = discord.channels.cache.get(config.discord.channelId);
+    if (channel) channel.send(`**${username} ➤** ${message}`);
+  });
+
+  bot.on("kicked", (reason) => console.log("Kicked:", reason));
+  bot.on("error", (err) => console.log("Error:", err));
+
+  bot.on("end", () => {
+    console.log("Bot disconnected. Reconnecting in 5 seconds...");
+
+    // Stop AFK loop when bot disconnects
+    if (afkJumpInterval) {
+      clearInterval(afkJumpInterval);
+      afkJumpInterval = null;
+    }
+
+    setTimeout(startMinecraftBot, 5000);
+  });
+}
+
+startMinecraftBot();
+
+// ======================
+// Discord → Minecraft relay
+// ======================
+discord.on("messageCreate", (msg) => {
+  if (msg.author.bot) return;
+  if (!bot || !bot.chat) return;
+
+  if (msg.content.startsWith(".cmd ")) {
+    const command = msg.content.slice(5);
+    bot.chat("/" + command);
+    msg.reply(`🟢 Ran command: /${command}`);
+  }
+});
+
+// ======================
+// Discord login
+// ======================
+discord.once("clientReady", () => {
+  console.log(`🔹 Discord bot logged in as ${discord.user.tag}`);
+});
+
+discord.login(config.discord.token);
