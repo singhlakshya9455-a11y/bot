@@ -20,14 +20,14 @@ const config = {
   mc: {
     host: "play.pika-network.net",
     port: 25565,
-    username: "ItIsLux",
+    username: "Silvermoon",
     version: "1.18.1",
     loginPassword: process.env.MC_LOGIN_PASSWORD, // change this to your real password
   },
   discord: {
     token:
       process.env.DISCORD_TOKEN,
-    channelId: "1430925481540063405",
+    channelId: "1451178112367984672",
   },
 };
 
