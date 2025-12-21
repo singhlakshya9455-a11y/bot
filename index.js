@@ -20,7 +20,7 @@ const config = {
   mc: {
     host: "play.pika-network.net",
     port: 25565,
-    username: "Silvermoon",
+    username: "SilverMoon",
     version: "1.18.1",
     loginPassword: process.env.MC_LOGIN_PASSWORD, // change this to your real password
   },
