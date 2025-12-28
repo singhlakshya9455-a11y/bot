@@ -96,13 +96,24 @@ function startMinecraftBot() {
     startAfkJumpLoop();
   });
 
-  bot.on("message", (jsonMsg) => {
+bot.on("message", async (jsonMsg, position, sender) => {
+  // sender can be null sometimes
+  if (!sender || sender === bot.username) return;
+
   const message = jsonMsg.toString();
-  });
-    if (username === bot.username) return;
-    const channel = await discord.channels.fetch(config.discord.channelId).catch(() => null);
-    if (channel) channel.send(`**${username} ➤** ${message}`);
-  });
+
+  try {
+    const channel = await discord.channels
+      .fetch(config.discord.channelId)
+      .catch(() => null);
+
+    if (channel) {
+      channel.send(`**${sender} ➤** ${message}`);
+    }
+  } catch (e) {
+    console.error("Discord relay error:", e);
+  }
+});
 
   bot.on("kicked", (reason) => console.log("Kicked:", reason));
   bot.on("error", (err) => console.log("Error:", err));
