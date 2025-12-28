@@ -96,9 +96,11 @@ function startMinecraftBot() {
     startAfkJumpLoop();
   });
 
-  bot.on("chat", (username, message) => {
+  bot.on("message", (jsonMsg) => {
+  const message = jsonMsg.toString();
+  });
     if (username === bot.username) return;
-    const channel = discord.channels.cache.get(config.discord.channelId);
+    const channel = await discord.channels.fetch(config.discord.channelId).catch(() => null);
     if (channel) channel.send(`**${username} ➤** ${message}`);
   });
 
@@ -121,37 +123,43 @@ function startMinecraftBot() {
 startMinecraftBot();
 
 // ======================
-// Discord → Minecraft relay
+// Discord → Minecraft relay (PREFIX: !)
 // ======================
 discord.on("messageCreate", (msg) => {
-  // Ignore other bots
+  // Ignore bots
   if (msg.author.bot) return;
 
-  // Optional: only allow messages from the specific linked channel
+  // Only allow messages from linked channel
   if (msg.channel.id !== config.discord.channelId) return;
 
+  // Only process messages starting with "!"
+  if (!msg.content.startsWith("!")) return;
+
   // Ensure MC bot is connected
-  if (!bot || !bot.chat) return;
-
-  const content = msg.content.trim();
-  if (!content) return;
-
-  // 🚀 If message starts with "/", treat as a command
-  if (content.startsWith("/")) {
-    const command = content.slice(1); // remove leading "/"
-    bot.chat("/" + command);
-    msg.reply(`🟢 Command executed: /${command}`).catch(console.error);
+  if (!bot || !bot.chat) {
+    msg.reply("🔴 Minecraft bot is not connected.");
     return;
   }
 
-  // 💬 Otherwise, send as normal chat to Minecraft
+  // Remove "!" prefix
+  const content = msg.content.slice(1).trim();
+  if (!content) return;
+
+  // 🚀 Minecraft command
+  if (content.startsWith("/")) {
+    bot.chat(content); // sends "/tps", "/spawn", etc.
+    msg.reply(`🟢 Command sent: ${content}`).catch(() => {});
+    return;
+  }
+
+  // 💬 Normal Minecraft chat
   bot.chat(content);
 });
 
 // ======================
 // Discord login
 // ======================
-discord.once("clientReady", () => {
+discord.once("ready", () => {
   console.log(`🔹 Discord bot logged in as ${discord.user.tag}`);
 });
 
