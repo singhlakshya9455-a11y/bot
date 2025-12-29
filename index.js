@@ -174,7 +174,12 @@ discord.once("ready", () => {
   console.log(`🔹 Discord bot logged in as ${discord.user.tag}`);
 });
 
-discord.login(config.discord.token);
+console.log("🔍 Attempting Discord login...");
+console.log("🔑 Token present:", !!config.discord.token);
+
+discord.login(config.discord.token)
+  .then(() => console.log("✅ discord.login() resolved"))
+  .catch(err => console.error("❌ discord.login() failed:", err));
 
 process.on("uncaughtException", (err) => {
   console.error("UNCAUGHT EXCEPTION:", err);
