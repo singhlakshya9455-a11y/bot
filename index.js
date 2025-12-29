@@ -20,14 +20,14 @@ const config = {
   mc: {
     host: "play.pika-network.net",
     port: 25565,
-    username: "SilverMoon",
+    username: "ItIsLux",
     version: "1.18.1",
     loginPassword: process.env.MC_LOGIN_PASSWORD, // change this to your real password
   },
   discord: {
     token:
       process.env.DISCORD_TOKEN,
-    channelId: "1451178112367984672",
+    channelId: "1430925481540063405",
   },
 };
 
@@ -96,24 +96,11 @@ function startMinecraftBot() {
     startAfkJumpLoop();
   });
 
-bot.on("message", async (jsonMsg, position, sender) => {
-  // sender can be null sometimes
-  if (!sender || sender === bot.username) return;
-
-  const message = jsonMsg.toString();
-
-  try {
-    const channel = await discord.channels
-      .fetch(config.discord.channelId)
-      .catch(() => null);
-
-    if (channel) {
-      channel.send(`**${sender} ➤** ${message}`);
-    }
-  } catch (e) {
-    console.error("Discord relay error:", e);
-  }
-});
+  bot.on("chat", (username, message) => {
+    if (username === bot.username) return;
+    const channel = discord.channels.cache.get(config.discord.channelId);
+    if (channel) channel.send(`**${username} ➤** ${message}`);
+  });
 
   bot.on("kicked", (reason) => console.log("Kicked:", reason));
   bot.on("error", (err) => console.log("Error:", err));
@@ -134,52 +121,41 @@ bot.on("message", async (jsonMsg, position, sender) => {
 startMinecraftBot();
 
 // ======================
-// Discord → Minecraft relay (PREFIX: !)
+// Discord → Minecraft relay
 // ======================
 discord.on("messageCreate", (msg) => {
-  // Ignore bots
+  // Ignore other bots
   if (msg.author.bot) return;
 
-  // Only allow messages from linked channel
+  // Optional: only allow messages from the specific linked channel
   if (msg.channel.id !== config.discord.channelId) return;
 
-  // Only process messages starting with "!"
-  if (!msg.content.startsWith("!")) return;
-
   // Ensure MC bot is connected
-  if (!bot || !bot.chat) {
-    msg.reply("🔴 Minecraft bot is not connected.");
-    return;
-  }
+  if (!bot || !bot.chat) return;
 
-  // Remove "!" prefix
-  const content = msg.content.slice(1).trim();
+  const content = msg.content.trim();
   if (!content) return;
 
-  // 🚀 Minecraft command
+  // 🚀 If message starts with "/", treat as a command
   if (content.startsWith("/")) {
-    bot.chat(content); // sends "/tps", "/spawn", etc.
-    msg.reply(`🟢 Command sent: ${content}`).catch(() => {});
+    const command = content.slice(1); // remove leading "/"
+    bot.chat("/" + command);
+    msg.reply(`🟢 Command executed: /${command}`).catch(console.error);
     return;
   }
 
-  // 💬 Normal Minecraft chat
+  // 💬 Otherwise, send as normal chat to Minecraft
   bot.chat(content);
 });
 
 // ======================
 // Discord login
 // ======================
-discord.once("ready", () => {
+discord.once("clientReady", () => {
   console.log(`🔹 Discord bot logged in as ${discord.user.tag}`);
 });
 
-console.log("🔍 Attempting Discord login...");
-console.log("🔑 Token present:", !!config.discord.token);
-
-discord.login(config.discord.token)
-  .then(() => console.log("✅ discord.login() resolved"))
-  .catch(err => console.error("❌ discord.login() failed:", err));
+discord.login(config.discord.token);
 
 process.on("uncaughtException", (err) => {
   console.error("UNCAUGHT EXCEPTION:", err);
